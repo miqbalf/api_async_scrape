@@ -9,13 +9,25 @@ AUTH_HEADER_PREFIX=Bearer
 API_BASE_URL=https://example.com
 API_TIMEOUT_SECONDS=120
 API_VERIFY_SSL=true
+API_REQUEST_LOG=false
+
+# --- Login API (optional, for interactive auth flow) ---
+LOGIN_ENDPOINT=/v1/auth/login
+LOGIN_METHOD=POST
+LOGIN_USERNAME_FIELD=email
+LOGIN_PASSWORD_FIELD=password
+LOGIN_TOKEN_PATH=data.token
+LOGIN_USERNAME=
+LOGIN_PASSWORD=
+TOKEN_ENV_KEY=TOKEN
+ENV_FILE_PATH=.env
 
 # --- Endpoints (set these for your API provider) ---
 PROJECTS_ENDPOINT=/v1/resources
 PLOTS_FILTER_ENDPOINT=/v1/resources/search
+PLOTS_DETAILS_ENDPOINT=/v1/resources/details
 ACTIVITIES_FILTER_ENDPOINT=/v1/activities/search
 ACTIVITY_BY_ID_ENDPOINT=/v1/activities/{activity_id}
-PLOTS_DETAILS_ENDPOINT=/v1/resources/details
 
 # --- Response shape mapping (keeps code schema-agnostic) ---
 API_ROWS_KEY=rows
@@ -30,6 +42,9 @@ PROJECT_NAME_FIELD=name
 RESOURCE_ID_PAYLOAD_FIELD=resourceId
 PROJECT_ID_PAYLOAD_FIELD=projectId
 PLOT_ID_FIELD=id
+PLOTS_DETAILS_IDS_PARAM=ids
+PLOTS_DETAILS_BATCH_SIZE=200
+PLOTS_DETAILS_CONCURRENCY=8
 PLOT_ID_RESULT_FIELD=plotID
 ACTIVITY_ID_FIELD=id
 ACTIVITY_ROWS_FIELD=rows

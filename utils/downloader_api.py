@@ -1,6 +1,8 @@
 import os
 import subprocess
 import sys
+import time
+from importlib.util import find_spec
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -17,14 +19,19 @@ class APIConfig:
     auth_header_prefix: str = "Bearer"
     timeout_seconds: int = 120
     verify_ssl: bool = True
+    request_log: bool = False
 
     projects_endpoint: str = "/v1/resources"
     plots_filter_endpoint: str = "/v1/resources/search"
+    plots_details_endpoint: str = "/v1/resources/details"
+    activities_filter_endpoint: str = "/v1/activities/search"
+    activity_by_id_endpoint: str = "/v1/activities/{activity_id}"
 
     rows_key: str = "rows"
     total_pages_key: str = "totalPages"
     project_id_field: str = "id"
     project_name_field: str = "name"
+    plot_id_field: str = "id"
     page_param_name: str = "page"
     page_in_body: bool = True
     first_page_number: int = 0
@@ -39,12 +46,17 @@ class APIConfig:
             auth_header_prefix=os.getenv("AUTH_HEADER_PREFIX", "Bearer"),
             timeout_seconds=int(os.getenv("API_TIMEOUT_SECONDS", "120")),
             verify_ssl=os.getenv("API_VERIFY_SSL", "true").lower() == "true",
+            request_log=os.getenv("API_REQUEST_LOG", "false").lower() == "true",
             projects_endpoint=os.getenv("PROJECTS_ENDPOINT", "/v1/resources"),
             plots_filter_endpoint=os.getenv("PLOTS_FILTER_ENDPOINT", "/v1/resources/search"),
+            plots_details_endpoint=os.getenv("PLOTS_DETAILS_ENDPOINT", "/v1/resources/details"),
+            activities_filter_endpoint=os.getenv("ACTIVITIES_FILTER_ENDPOINT", "/v1/activities/search"),
+            activity_by_id_endpoint=os.getenv("ACTIVITY_BY_ID_ENDPOINT", "/v1/activities/{activity_id}"),
             rows_key=os.getenv("API_ROWS_KEY", "rows"),
             total_pages_key=os.getenv("API_TOTAL_PAGES_KEY", "totalPages"),
             project_id_field=os.getenv("PROJECT_ID_FIELD", "id"),
             project_name_field=os.getenv("PROJECT_NAME_FIELD", "name"),
+            plot_id_field=os.getenv("PLOT_ID_FIELD", "id"),
             page_param_name=os.getenv("API_PAGE_PARAM_NAME", "page"),
             page_in_body=os.getenv("API_PAGE_IN_BODY", "true").lower() == "true",
             first_page_number=int(os.getenv("API_FIRST_PAGE_NUMBER", "0")),
@@ -54,6 +66,7 @@ class APIConfig:
 class AsyncAPIClient:
     def __init__(self, config: APIConfig):
         self.config = config
+        self._client: Optional[httpx.AsyncClient] = None
 
     def _build_headers(self) -> Dict[str, str]:
         if not self.config.auth_token:
@@ -67,6 +80,19 @@ class AsyncAPIClient:
             return endpoint
         return f"{self.config.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=self.config.timeout_seconds,
+                verify=self.config.verify_ssl,
+            )
+        return self._client
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
     async def request(
         self,
         endpoint: str,
@@ -76,17 +102,34 @@ class AsyncAPIClient:
         json_body: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        async with httpx.AsyncClient(timeout=self.config.timeout_seconds, verify=self.config.verify_ssl) as client:
-            response = await client.request(
-                method.upper(),
-                self._url(endpoint),
-                params=params,
-                json=json_body,
-                data=data,
-                headers=self._build_headers(),
-            )
-            response.raise_for_status()
-            return response.json()
+        client = await self._get_client()
+        url = self._url(endpoint)
+        page_param_name = self.config.page_param_name
+        page_value = None
+        if isinstance(params, dict):
+            page_value = params.get(page_param_name)
+        if page_value is None and isinstance(json_body, dict):
+            page_value = json_body.get(page_param_name)
+        if page_value is None and isinstance(data, dict):
+            page_value = data.get(page_param_name)
+        if self.config.request_log:
+            page_text = f" page={page_value}" if page_value is not None else ""
+            print(f"[api] {method.upper()} {url}{page_text}")
+
+        start = time.perf_counter()
+        response = await client.request(
+            method.upper(),
+            url,
+            params=params,
+            json=json_body,
+            data=data,
+            headers=self._build_headers(),
+        )
+        if self.config.request_log:
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            print(f"[api] <- {response.status_code} {method.upper()} {url} ({elapsed_ms:.0f} ms)")
+        response.raise_for_status()
+        return response.json()
 
     @staticmethod
     def save_json(data: Dict[str, Any], output_path: str) -> Path:
@@ -108,6 +151,10 @@ def _run_command(cmd: str) -> None:
     subprocess.check_call(cmd, shell=True)
 
 
+def _modules_available(*module_names: str) -> bool:
+    return all(find_spec(module_name) is not None for module_name in module_names)
+
+
 def ensure_runtime() -> Path:
     if is_colab():
         repo_url = "https://github.com/miqbalf/api_async_scrape.git"
@@ -119,8 +166,13 @@ def ensure_runtime() -> Path:
         _run_command("python -m pip install -q -r requirements_linux.txt")
         return repo_dir
 
-    _run_command("python -m pip install -q --upgrade pip")
-    _run_command("python -m pip install -q httpx python-dotenv aiofiles pandas geopandas")
+    force_install = os.getenv("API_ASYNC_SCRAPE_FORCE_INSTALL", "false").lower() == "true"
+    required_modules = ("httpx", "requests", "dotenv", "aiofiles", "pandas", "geopandas")
+    if force_install or not _modules_available(*required_modules):
+        _run_command("python -m pip install -q --upgrade pip")
+        _run_command("python -m pip install -q httpx requests python-dotenv aiofiles pandas geopandas")
+    else:
+        print("Runtime dependencies already available; skipping pip install.")
     return Path.cwd()
 
 

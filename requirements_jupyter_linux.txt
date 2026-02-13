@@ -1,0 +1,9 @@
+# Minimal runtime deps for using api_async_scrape in Linux Jupyter containers
+numpy<2
+shapely>=2.0.2,<2.1
+geopandas>=0.14,<1.0
+aiofiles>=23.2.1
+httpx>=0.25.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+pandas>=2.0.3
