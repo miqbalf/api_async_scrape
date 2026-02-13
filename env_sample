@@ -1,0 +1,35 @@
+# Copy this file to `.env` and update values.
+
+# --- Auth ---
+TOKEN=please_change_this_with_your_token
+AUTH_HEADER_NAME=Authorization
+AUTH_HEADER_PREFIX=Bearer
+
+# --- Base API ---
+API_BASE_URL=https://example.com
+API_TIMEOUT_SECONDS=120
+API_VERIFY_SSL=true
+
+# --- Endpoints (set these for your API provider) ---
+PROJECTS_ENDPOINT=/v1/resources
+PLOTS_FILTER_ENDPOINT=/v1/resources/search
+ACTIVITIES_FILTER_ENDPOINT=/v1/activities/search
+ACTIVITY_BY_ID_ENDPOINT=/v1/activities/{activity_id}
+PLOTS_DETAILS_ENDPOINT=/v1/resources/details
+
+# --- Response shape mapping (keeps code schema-agnostic) ---
+API_ROWS_KEY=rows
+API_TOTAL_PAGES_KEY=totalPages
+API_PAGE_PARAM_NAME=page
+API_PAGE_IN_BODY=true
+API_FIRST_PAGE_NUMBER=0
+PROJECT_ID_FIELD=id
+PROJECT_NAME_FIELD=name
+
+# --- Optional payload/field mapping ---
+RESOURCE_ID_PAYLOAD_FIELD=resourceId
+PROJECT_ID_PAYLOAD_FIELD=projectId
+PLOT_ID_FIELD=id
+PLOT_ID_RESULT_FIELD=plotID
+ACTIVITY_ID_FIELD=id
+ACTIVITY_ROWS_FIELD=rows
