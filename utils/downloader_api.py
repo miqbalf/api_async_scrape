@@ -163,7 +163,10 @@ def ensure_runtime() -> Path:
             _run_command(f"git clone {repo_url} {repo_dir}")
         os.chdir(repo_dir)
         _run_command("python -m pip install -q --upgrade pip")
-        _run_command("python -m pip install -q -r requirements_linux.txt")
+        # Minimal deps for Colab; full requirements_linux.txt often conflicts with Colab's env
+        _run_command(
+            "python -m pip install -q httpx requests python-dotenv aiofiles pandas geopandas"
+        )
         return repo_dir
 
     force_install = os.getenv("API_ASYNC_SCRAPE_FORCE_INSTALL", "false").lower() == "true"
