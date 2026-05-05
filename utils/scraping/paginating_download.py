@@ -375,36 +375,36 @@ class PaginatingDownload(Request):
         output = client.save_json(final_payload, output_path)
         return final_payload, output
 
-    @classmethod
-    async def download_plots(
-        cls,
-        client: AsyncAPIClient,
-        cfg: APIConfig,
-        project_id: int,
-        output_path: str,
-        extra_filters: Optional[Dict[str, Any]] = None,
-        filter_payload: Optional[Dict[str, Any]] = None,
-        project_id_payload_field: Optional[str] = None,
-        fetch_details: bool = True,
-        **filter_kwargs: Any,
-    ):
-        payload_field = (
-            project_id_payload_field
-            or os.getenv("PROJECT_ID_PAYLOAD_FIELD")
-            or os.getenv("RESOURCE_ID_PAYLOAD_FIELD")
-            or "resourceId"
-        )
-        root_payload = {payload_field: project_id}
-        return await cls.download_records(
-            client,
-            cfg,
-            endpoint=cfg.plots_filter_endpoint,
-            output_path=output_path,
-            root_payload=root_payload,
-            extra_filters=extra_filters,
-            filter_payload=filter_payload,
-            fetch_details=fetch_details,
-            details_endpoint=cfg.plots_details_endpoint,
-            details_id_field=cfg.plot_id_field,
-            **filter_kwargs,
-        )
+    # @classmethod
+    # async def download_plots(
+    #     cls,
+    #     client: AsyncAPIClient,
+    #     cfg: APIConfig,
+    #     project_id: int,
+    #     output_path: str,
+    #     extra_filters: Optional[Dict[str, Any]] = None,
+    #     filter_payload: Optional[Dict[str, Any]] = None,
+    #     project_id_payload_field: Optional[str] = None,
+    #     fetch_details: bool = True,
+    #     **filter_kwargs: Any,
+    # ):
+    #     payload_field = (
+    #         project_id_payload_field
+    #         or os.getenv("PROJECT_ID_PAYLOAD_FIELD")
+    #         or os.getenv("RESOURCE_ID_PAYLOAD_FIELD")
+    #         or "resourceId"
+    #     )
+    #     root_payload = {payload_field: project_id}
+    #     return await cls.download_records(
+    #         client,
+    #         cfg,
+    #         endpoint=cfg.plots_filter_endpoint,
+    #         output_path=output_path,
+    #         root_payload=root_payload,
+    #         extra_filters=extra_filters,
+    #         filter_payload=filter_payload,
+    #         fetch_details=fetch_details,
+    #         details_endpoint=cfg.plots_details_endpoint,
+    #         details_id_field=cfg.plot_id_field,
+    #         **filter_kwargs,
+    #     )
